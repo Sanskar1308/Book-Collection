@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const Limit = ({ setBookList }) => {
+const Limit = ({ setProducts }) => {
   const [limit, setLimit] = useState(5);
   const [page, setPage] = useState(1);
 
@@ -26,7 +26,7 @@ const Limit = ({ setBookList }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setBookList(data.resultCollection);
+        setProducts(data.resultCollection);
       } else {
         console.error("Data fetch failed:", await response.text());
       }

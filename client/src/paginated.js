@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const Paginate = ({ setBookList }) => {
+const Paginate = ({ setProducts }) => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(5);
   const [pageCount, setPageCount] = useState(1);
@@ -27,7 +27,7 @@ const Paginate = ({ setBookList }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setBookList(data.resultCollection);
+        setProducts(data.resultCollection);
         setPageCount(data.pageCount);
         console.log(data);
       } else {

@@ -20,6 +20,8 @@ function AppContent() {
   const [updatedAuthor, setUpdatedAuthor] = useState();
   const [updatedTitle, setUpdatedTitle] = useState();
   const [bookList, setBookList] = useState([]);
+  const [products, setProducts] = useState(bookList);
+  const [searchVal, setSearchVal] = useState("");
 
   const token = localStorage.getItem("token");
 
@@ -61,6 +63,7 @@ function AppContent() {
     Axios.get("http://localhost:3001/collection")
       .then((response) => {
         setBookList(response.data.resultCollection);
+        setProducts(response.data.resultCollection);
       })
       .catch((error) => {
         console.error("Error fetching collection:", error);
@@ -70,6 +73,7 @@ function AppContent() {
   useEffect(() => {
     Axios.get("http://localhost:3001/collection").then((res) => {
       setBookList(res.data.resultCollection);
+      setProducts(res.data.resultCollection);
     });
   }, []);
 
@@ -117,6 +121,19 @@ function AppContent() {
     overlay.classList.toggle("show");
   }
 
+  async function handleSearchClick() {
+    if (searchVal === "") {
+      setProducts(bookList);
+      return;
+    }
+
+    const filterBySearch = bookList.filter((book) => {
+      return book.title.toLowerCase().includes(searchVal.toLowerCase());
+    });
+
+    setProducts(filterBySearch);
+  }
+
   return token ? (
     <div className="App">
       <h1>CRUD app for Book Collection</h1>
@@ -151,7 +168,17 @@ function AppContent() {
       </div>
 
       <h2>List of Books</h2>
-      <Limit setBookList={setBookList} />
+      <div>
+        <input
+          placeholder="Search book..."
+          onChange={(e) => setSearchVal(e.target.value)}
+        ></input>
+        <button className="btn btn-4" onClick={handleSearchClick}>
+          Search
+        </button>
+      </div>
+      <div></div>
+      <Limit setProducts={setProducts} />
       <div className="table-collection">
         <table>
           <thead>
@@ -162,9 +189,9 @@ function AppContent() {
             </tr>
           </thead>
           <tbody>
-            {bookList &&
-              bookList.length > 0 &&
-              bookList.map((val, key) => (
+            {products &&
+              products.length > 0 &&
+              products.map((val, key) => (
                 <tr key={key}>
                   <td>
                     <h3>{val.title}</h3>
@@ -222,7 +249,7 @@ function AppContent() {
               ))}
           </tbody>
         </table>
-        <Paginate setBookList={setBookList} />
+        <Paginate setProducts={setProducts} />
       </div>
     </div>
   ) : (
