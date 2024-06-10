@@ -12,10 +12,7 @@ const mongoose = require("mongoose");
 const tokenBlacklist = new Set();
 
 mongoose
-  .connect(
-    "mongodb+srv://admin:aKSHw2njjioupAYz@cluster0.bxkhk0r.mongodb.net/",
-    { useNewUrlParser: true, useUnifiedTopology: true }
-  )
+  .connect("mongodb+srv://admin:aKSHw2njjioupAYz@cluster0.bxkhk0r.mongodb.net/")
   .then(() => console.log("connected to MongoDB...."))
   .catch((err) => console.log("Couldn't connect to MongoDB!!"));
 
@@ -43,6 +40,50 @@ const authenticatetoken = async (req, res, next) => {
   }
 };
 
+function paginationResult(model) {
+  return async (req, res, next) => {
+    const page = parseInt(req.query.page || 1);
+    const limit = parseInt(req.query.limit || 5);
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const resultCollection = {};
+    resultCollection.totalUser = model.length;
+    resultCollection.pageCount = Math.ceil(model.length / limit);
+    console.log(resultCollection.pageCount);
+    console.log(model);
+
+    if (startIndex > 0) {
+      resultCollection.previous = {
+        page: page - 1,
+        limit: limit,
+      };
+    }
+
+    if (endIndex <= model.length) {
+      resultCollection.next = {
+        page: page + 1,
+        limit: limit,
+      };
+    }
+
+    try {
+      const userId = req.user.userId; // Extract userId from authenticated token
+      resultCollection.resultCollection = await model
+        .find({ userId })
+        .limit(limit)
+        .skip(startIndex)
+        .exec();
+      res.paginatedResult = resultCollection;
+      console.log(resultCollection);
+      next();
+    } catch (e) {
+      res.status(500).send({ msg: e.message });
+    }
+  };
+}
+
 /*Book's apis*/
 app.post("/collection", authenticatetoken, async (req, res) => {
   try {
@@ -68,7 +109,16 @@ app.post("/collection", authenticatetoken, async (req, res) => {
   }
 });
 
-app.get("/collection", authenticatetoken, async (req, res) => {
+app.get(
+  "/collection",
+  authenticatetoken,
+  paginationResult(Collection),
+  async (req, res) => {
+    res.send(res.paginatedResult);
+  }
+);
+
+app.get("/allCollection", authenticatetoken, async (req, res) => {
   const userId = req.user.userId; // Extract userId from authenticated token
   const collection = await Collection.find({ userId });
   res.send(collection);
@@ -166,7 +216,6 @@ app.post("/logout", authenticatetoken, (req, res) => {
   try {
     // Extract the token from the authorization header
     const token = req.headers.authorization?.split(" ")[1];
-    console.log("logout token: ", token);
     // Add the token to the blacklist
     token && tokenBlacklist.add(token);
 

@@ -2,6 +2,7 @@ import "./App.css";
 import Axios from "axios";
 import { useState, useEffect } from "react";
 import Login from "./login.js";
+import Signup from "./signup.js";
 import {
   BrowserRouter as Router,
   Route,
@@ -9,6 +10,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import Logout from "./logout.js";
+import Paginate from "./paginated.js";
+import Limit from "./limit.js";
 
 function AppContent() {
   const [author, setAuthor] = useState();
@@ -56,7 +59,7 @@ function AppContent() {
     );
     Axios.get("http://localhost:3001/collection")
       .then((response) => {
-        setBookList(response.data);
+        setBookList(response.data.resultCollection);
       })
       .catch((error) => {
         console.error("Error fetching collection:", error);
@@ -65,7 +68,7 @@ function AppContent() {
 
   useEffect(() => {
     Axios.get("http://localhost:3001/collection").then((res) => {
-      setBookList(res.data);
+      setBookList(res.data.resultCollection);
     });
   }, []);
 
@@ -147,6 +150,7 @@ function AppContent() {
       </div>
 
       <h2>List of Books</h2>
+      <Limit setBookList={setBookList} />
       <div className="table-collection">
         <table>
           <thead>
@@ -217,6 +221,7 @@ function AppContent() {
               ))}
           </tbody>
         </table>
+        <Paginate setBookList={setBookList} />
       </div>
     </div>
   ) : (
@@ -228,6 +233,7 @@ function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<AppContent />} />
       </Routes>
