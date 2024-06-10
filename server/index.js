@@ -118,12 +118,6 @@ app.get(
   }
 );
 
-app.get("/allCollection", authenticatetoken, async (req, res) => {
-  const userId = req.user.userId; // Extract userId from authenticated token
-  const collection = await Collection.find({ userId });
-  res.send(collection);
-});
-
 app.get("/collection/:id", authenticatetoken, async (req, res) => {
   const userId = req.user._id; // Extract userId from authenticated token
   const collection = await Collection.findOne({ _id: req.params.id, userId });
