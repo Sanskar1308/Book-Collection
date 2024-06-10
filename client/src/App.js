@@ -12,6 +12,7 @@ import {
 import Logout from "./logout.js";
 import Paginate from "./paginated.js";
 import Limit from "./limit.js";
+import ProtectedRoute from "./protectedRoute.js";
 
 function AppContent() {
   const [author, setAuthor] = useState();
@@ -235,7 +236,14 @@ function App() {
       <Routes>
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<AppContent />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AppContent />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

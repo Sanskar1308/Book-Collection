@@ -40,13 +40,11 @@ const Paginate = ({ setBookList }) => {
   };
 
   const handleNext = () => {
-    if (page <= pageCount) {
-      setPage((prevPage) => {
-        const newPage = prevPage + 1;
-        fetchPageData(newPage, limit);
-        return newPage;
-      });
-    }
+    setPage((prevPage) => {
+      const newPage = prevPage + 1;
+      fetchPageData(newPage, limit);
+      return newPage;
+    });
   };
 
   const handlePrevious = () => {
