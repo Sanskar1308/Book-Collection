@@ -3,6 +3,7 @@ import Axios from "axios";
 import { useState, useEffect } from "react";
 import Login from "./login.js";
 import Signup from "./signup.js";
+import ExcelDownloadComponent from "./dowload.js";
 import {
   BrowserRouter as Router,
   Route,
@@ -10,9 +11,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import Logout from "./logout.js";
-import Paginate from "./paginated.js";
-import Limit from "./limit.js";
 import ProtectedRoute from "./protectedRoute.js";
+import * as xlsx from "xlsx";
 
 function AppContent() {
   const [author, setAuthor] = useState();
@@ -22,6 +22,10 @@ function AppContent() {
   const [bookList, setBookList] = useState([]);
   const [products, setProducts] = useState(bookList);
   const [searchVal, setSearchVal] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(5);
+  const [uploadedData, setUploadedData] = useState();
+  const [pageCount, setPageCount] = useState();
 
   const token = localStorage.getItem("token");
 
@@ -55,15 +59,20 @@ function AppContent() {
       });
   };
 
-  const fetchBookList = () => {
+  const fetchBookList = async (page, limit) => {
     console.log(
       "Fetching book list with token: ",
       localStorage.getItem("token")
     );
-    Axios.get("http://localhost:3001/collection")
+    await Axios.get(
+      `http://localhost:3001/collection?page=${page}&limit=${limit}`
+    )
       .then((response) => {
         setBookList(response.data.resultCollection);
         setProducts(response.data.resultCollection);
+        if (response.data.pageCount) {
+          setPageCount(response.data.pageCount);
+        }
       })
       .catch((error) => {
         console.error("Error fetching collection:", error);
@@ -74,6 +83,9 @@ function AppContent() {
     Axios.get("http://localhost:3001/collection").then((res) => {
       setBookList(res.data.resultCollection);
       setProducts(res.data.resultCollection);
+      if (res.data.pageCount) {
+        setPageCount(res.data.pageCount);
+      }
     });
   }, []);
 
@@ -128,11 +140,74 @@ function AppContent() {
     }
 
     const filterBySearch = bookList.filter((book) => {
-      return book.title.toLowerCase().includes(searchVal.toLowerCase());
+      return (
+        book.title.toLowerCase().includes(searchVal.toLowerCase()) ||
+        book.author.toLowerCase().includes(searchVal.toLowerCase())
+      );
     });
 
     setProducts(filterBySearch);
   }
+
+  const handleNext = () => {
+    if (page < pageCount) {
+      setPage((prevPage) => {
+        const newPage = prevPage + 1;
+        fetchBookList(newPage, limit);
+        return newPage;
+      });
+    }
+  };
+
+  const handlePrevious = () => {
+    setPage((prevPage) => {
+      const newPage = Math.max(prevPage - 1, 1);
+      fetchBookList(newPage, limit);
+      return newPage;
+    });
+  };
+
+  const handleSelectChange = (e) => {
+    const newLimit = e.target.value;
+    setLimit(newLimit);
+    setPage(1); // Reset page to 1 when limit changes
+    fetchBookList(1, newLimit); // Fetch the first page with the new limit
+  };
+
+  const readUploadFile = (e) => {
+    e.preventDefault();
+    if (e.target.files) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = e.target.result;
+        const workbook = xlsx.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = xlsx.utils.sheet_to_json(worksheet);
+        setUploadedData(json);
+      };
+      reader.readAsArrayBuffer(e.target.files[0]);
+    }
+  };
+
+  const addToData = async (event) => {
+    event.preventDefault();
+    console.log("Adding to list with token: ", localStorage.getItem("token"));
+
+    const uploadPromises = uploadedData.map((item) =>
+      Axios.post("http://localhost:3001/collection", {
+        author: item.author,
+        title: item.title,
+      })
+    );
+
+    try {
+      await Promise.all(uploadPromises);
+      fetchBookList(); // Refresh the book list after adding new ones
+    } catch (error) {
+      console.error("Error adding to collection:", error);
+    }
+  };
 
   return token ? (
     <div className="App">
@@ -168,6 +243,17 @@ function AppContent() {
       </div>
 
       <h2>List of Books</h2>
+      <form onSubmit={addToData}>
+        <label htmlFor="upload">Upload File</label>
+        <input
+          type="file"
+          name="upload"
+          id="upload"
+          onChange={readUploadFile}
+        />
+        <button type="submit">Submit</button>
+      </form>
+      <ExcelDownloadComponent />
       <div>
         <input
           placeholder="Search book..."
@@ -178,7 +264,16 @@ function AppContent() {
         </button>
       </div>
       <div></div>
-      <Limit setProducts={setProducts} />
+      <div>
+        <select onChange={handleSelectChange}>
+          <option value={1}>1</option>
+          <option value={2}>2</option>
+          <option value={5}>5</option>
+          <option value={10}>10</option>
+          <option value={15}>15</option>
+          <option value={20}>20</option>
+        </select>
+      </div>
       <div className="table-collection">
         <table>
           <thead>
@@ -249,7 +344,11 @@ function AppContent() {
               ))}
           </tbody>
         </table>
-        <Paginate setProducts={setProducts} />
+        <div>
+          <button onClick={handlePrevious}>&lt; previous</button>
+          <button>{page}</button>
+          <button onClick={handleNext}>next &gt;</button>
+        </div>
       </div>
     </div>
   ) : (

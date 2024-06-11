@@ -49,32 +49,36 @@ function paginationResult(model) {
     const endIndex = page * limit;
 
     const resultCollection = {};
-    resultCollection.totalUser = model.length;
-    resultCollection.pageCount = Math.ceil(model.length / limit);
-    console.log(resultCollection.pageCount);
-    console.log(model);
-
-    if (startIndex > 0) {
-      resultCollection.previous = {
-        page: page - 1,
-        limit: limit,
-      };
-    }
-
-    if (endIndex <= model.length) {
-      resultCollection.next = {
-        page: page + 1,
-        limit: limit,
-      };
-    }
 
     try {
       const userId = req.user.userId; // Extract userId from authenticated token
+
+      // Get the total number of documents that match the userId
+      const totalDocuments = await model.countDocuments({ userId });
+
+      resultCollection.totalUser = totalDocuments;
+      resultCollection.pageCount = Math.ceil(totalDocuments / limit);
+
+      if (startIndex > 0) {
+        resultCollection.previous = {
+          page: page - 1,
+          limit: limit,
+        };
+      }
+
+      if (endIndex < totalDocuments) {
+        resultCollection.next = {
+          page: page + 1,
+          limit: limit,
+        };
+      }
+
       resultCollection.resultCollection = await model
         .find({ userId })
         .limit(limit)
         .skip(startIndex)
         .exec();
+
       res.paginatedResult = resultCollection;
       console.log(resultCollection);
       next();
@@ -83,7 +87,6 @@ function paginationResult(model) {
     }
   };
 }
-
 /*Book's apis*/
 app.post("/collection", authenticatetoken, async (req, res) => {
   try {
@@ -118,8 +121,17 @@ app.get(
   }
 );
 
+app.get("/bookList", authenticatetoken, async (req, res) => {
+  const userId = req.user.userId; // Extract userId from authenticated token
+  const collection = await Collection.find({ userId });
+  if (!collection) {
+    return res.status(404).send("Collection not found");
+  }
+  res.send(collection);
+});
+
 app.get("/collection/:id", authenticatetoken, async (req, res) => {
-  const userId = req.user._id; // Extract userId from authenticated token
+  const userId = req.user.userId; // Extract userId from authenticated token
   const collection = await Collection.findOne({ _id: req.params.id, userId });
   if (!collection) {
     return res.status(404).send("Collection not found");
