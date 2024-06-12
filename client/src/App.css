@@ -1,6 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
-  background-color: #6e6e6e;
-  color: #d1d1d1;
+  background-color: #f9f7f7;
+  color: #112d4e;
 }
 
 .App {

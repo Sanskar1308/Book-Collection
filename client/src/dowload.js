@@ -54,7 +54,12 @@ const ExcelDownloadComponent = () => {
 
   return (
     <div>
-      <button onClick={handleDownloadExcel}>Download Excel</button>
+      <button
+        className="w-15 flex my-2 mx-2 items-center justify-center px-2 py-1 text-xs  font-small  rounded-md text-purple-700 bg-purple-100 hover:bg-purple-50 hover:text-purple-600 focus:ring ring-offset-2 ring-purple-100 focus:outline-none transition duration-150 ease-in-out "
+        onClick={handleDownloadExcel}
+      >
+        Exe
+      </button>
     </div>
   );
 };

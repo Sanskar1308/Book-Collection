@@ -40,8 +40,13 @@ function Logout() {
   }
 
   return (
-    <div>
-      <button onClick={handleLogout}>Logout</button>
+    <div className="absolute top-0 right-0 m-4">
+      <button className="relative" onClick={handleLogout}>
+        <span className="absolute top-0 left-0 mt-1 ml-1 h-full w-full rounded bg-gray-700"></span>
+        <span className="fold-bold relative inline-block h-full w-full rounded border-2 border-black bg-white px-3 py-1 text-xs font-bold text-black transition duration-100 hover:bg-black hover:text-white">
+          logout
+        </span>
+      </button>
     </div>
   );
 }
