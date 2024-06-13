@@ -13,8 +13,9 @@ import {
 import Logout from "./logout.js";
 import ProtectedRoute from "./protectedRoute.js";
 import * as xlsx from "xlsx";
-import ForgetPassword from "./forgetPassword.js";
 import ResetPassword from "./resetPassword.js";
+import RequestPasswordReset from "./forgetPassword.js";
+import VerifyOtp from "./verifyOtp.js";
 
 function AppContent() {
   const [author, setAuthor] = useState();
@@ -451,8 +452,9 @@ function App() {
       <Routes>
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/forgetPassword" element={<ForgetPassword />} />
-        <Route path="/resetPassword" element={<ResetPassword />} />
+        <Route path="/forgetPassword" element={<RequestPasswordReset />} />
+        <Route path="/verifyOtp" element={<VerifyOtp />} />
+        <Route path="/resetPassword/" element={<ResetPassword />} />
         <Route
           path="/"
           element={

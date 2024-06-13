@@ -1,84 +1,62 @@
-import React from "react";
-import { useFormik } from "formik";
-import * as Yup from "yup";
+import React, { useState } from "react";
 import axios from "axios";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const ResetPassword = () => {
-  const formik = useFormik({
-    initialValues: {
-      newPassword: "",
-      confirmPassword: "",
-    },
-    validationSchema: Yup.object({
-      newPassword: Yup.string().required("Required").min(6, "Too Short!"),
-      confirmPassword: Yup.string()
-        .oneOf([Yup.ref("newPassword"), null], "Passwords must match")
-        .required("Required"),
-    }),
-    onSubmit: (values) => {
-      const { newPassword } = values;
-      const token = window.location.pathname.split("/").pop();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const email = localStorage.getItem("email");
+  const otp = localStorage.getItem("otp");
+  const navigate = useNavigate();
 
-      axios
-        .post(`reset-password/${token}`, { newPassword })
-        .then((response) => {
-          toast.success(response.data.message);
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 3000);
-        })
-        .catch((error) => {
-          toast.error("Your link has expired");
+  const handleResetPassword = async () => {
+    if (newPassword === confirmPassword) {
+      try {
+        await axios.post("http://localhost:3001/resetPassword", {
+          email,
+          otp,
+          newPassword,
         });
-    },
-  });
+        alert("Password has been reset successfully.");
+        localStorage.removeItem("email");
+        localStorage.removeItem("otp");
+        navigate("/login");
+      } catch (error) {
+        console.error("Error resetting password:", error);
+        alert("Not verified user");
+      }
+    } else {
+      alert("Password didn't match");
+    }
+  };
 
   return (
-    <div className="reset-password-container">
-      <h2>Reset Password</h2>
-      <form onSubmit={formik.handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="newPassword">New Password</label>
-          <input
-            id="newPassword"
-            name="newPassword"
-            type="password"
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            value={formik.values.newPassword}
-            className={
-              formik.touched.newPassword && formik.errors.newPassword
-                ? "input-error"
-                : ""
-            }
-          />
-          {formik.touched.newPassword && formik.errors.newPassword ? (
-            <div className="error-message">{formik.errors.newPassword}</div>
-          ) : null}
-        </div>
-        <div className="form-group">
-          <label htmlFor="confirmPassword">Confirm Password</label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            value={formik.values.confirmPassword}
-            className={
-              formik.touched.confirmPassword && formik.errors.confirmPassword
-                ? "input-error"
-                : ""
-            }
-          />
-          {formik.touched.confirmPassword && formik.errors.confirmPassword ? (
-            <div className="error-message">{formik.errors.confirmPassword}</div>
-          ) : null}
-        </div>
-        <button type="submit">Reset Password</button>
-      </form>
+    <div className="flex flex-1 flex-col  justify-center space-y-5 max-w-md mx-auto mt-24">
+      <div className="flex flex-col space-y-2 text-center">
+        <h2 className="text-3xl md:text-4xl font-bold">Reset Password</h2>
+      </div>
+      <div className="flex flex-col max-w-md space-y-5">
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="New Password"
+          className="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium placeholder:font-normal"
+        />
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm New Password"
+          className="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium placeholder:font-normal"
+        />
+        <button
+          className="flex items-center justify-center flex-none px-3 py-2 md:px-4 md:py-3 border-2 rounded-lg font-medium border-black bg-black text-white"
+          onClick={handleResetPassword}
+        >
+          Reset Password
+        </button>
+      </div>
     </div>
   );
 };

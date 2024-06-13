@@ -9,8 +9,8 @@ const port = 3001;
 const Collection = require("./collection");
 const User = require("./user");
 const mongoose = require("mongoose");
-
 const tokenBlacklist = new Set();
+const crypto = require("crypto");
 
 mongoose
   .connect("mongodb+srv://admin:aKSHw2njjioupAYz@cluster0.bxkhk0r.mongodb.net/")
@@ -18,12 +18,15 @@ mongoose
   .catch((err) => console.log("Couldn't connect to MongoDB!!"));
 
 app.use(express.json({ extended: false }));
-app.use(
-  cors({
-    origin: "http://localhost:3000", // Adjust based on your frontend's URL
-    credentials: true,
-  })
-);
+
+const corsOptions = {
+  origin: "http://localhost:3000", // Allow requests from this origin
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Allowed methods
+  credentials: true, // Allow cookies to be sent with requests
+  optionsSuccessStatus: 204, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 const authenticatetoken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -88,93 +91,6 @@ function paginationResult(model) {
     }
   };
 }
-
-const forgetPassword = async (req, res) => {
-  try {
-    // Find the user by email
-    const user = await User.findOne({ mail: req.body.email });
-
-    // If user not found, send error message
-    if (!user) {
-      return res.status(404).send({ message: "User not found" });
-    }
-
-    // Generate a unique JWT token for the user that contains the user's id
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.ACCESS_TOKEN_SECRET,
-      {
-        expiresIn: "10m",
-      }
-    );
-
-    // Send the token to the user's email
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL,
-        pass: process.env.PASSWORD_APP_EMAIL,
-      },
-    });
-
-    // Email configuration
-    const mailOptions = {
-      from: process.env.EMAIL,
-      to: req.body.email,
-      subject: "Reset Password",
-      html: `<h1>Reset Your Password</h1>
-      <p>Click on the following link to reset your password:</p>
-      <a href="http://localhost:5173/reset-password/${token}">http://localhost:5173/reset-password/${token}</a>
-      <p>The link will expire in 10 minutes.</p>
-      <p>If you didn't request a password reset, please ignore this email.</p>`,
-    };
-
-    // Send the email
-    transporter.sendMail(mailOptions, (err, info) => {
-      if (err) {
-        return res.status(500).send({ message: err.message });
-      }
-      res.status(200).send({ message: "Email sent" });
-    });
-  } catch (err) {
-    res.status(500).send({ message: err.message });
-  }
-};
-
-const resetPassword = async (req, res) => {
-  try {
-    // Verify the token sent by the user
-    const decodedToken = jwt.verify(
-      req.params.token,
-      process.env.ACCESS_TOKEN_SECRET
-    );
-
-    // If the token is invalid, return an error
-    if (!decodedToken) {
-      return res.status(401).send({ message: "Invalid token" });
-    }
-
-    // find the user with the id from the token
-    const user = await User.findOne({ _id: decodedToken.userId });
-    if (!user) {
-      return res.status(401).send({ message: "no user found" });
-    }
-
-    // Hash the new password
-    const salt = await bcrypt.genSalt(10);
-    req.body.newPassword = await bcrypt.hash(req.body.newPassword, salt);
-
-    // Update user's password, clear reset token and expiration time
-    user.password = req.body.newPassword;
-    await user.save();
-
-    // Send success response
-    res.status(200).send({ message: "Password updated" });
-  } catch (err) {
-    // Send error response if any error occurs
-    res.status(500).send({ message: err.message });
-  }
-};
 
 /*Book's apis*/
 app.post("/collection", authenticatetoken, async (req, res) => {
@@ -323,8 +239,118 @@ app.post("/logout", authenticatetoken, (req, res) => {
   }
 });
 
-app.post("/forgetPassword", forgetPassword);
+function generateOtp() {
+  const otp = crypto.randomBytes(3).toString("hex");
+  return parseInt(otp, 16).toString().slice(0, 6);
+}
 
-app.post("/resetPassword/:token", resetPassword);
+app.post("/forgetPassword", async (req, res) => {
+  const oldUser = await User.findOne({ email: req.body.email });
+  if (!oldUser) {
+    return res.send({ status: "User not found!!" });
+  }
+
+  try {
+    const otp = generateOtp();
+    oldUser.resetPasswordOTP = otp;
+    oldUser.resetPasswordExpires = Date.now() + 300000; // 5 minutes
+    await oldUser.save();
+
+    var transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.PASSWORD_APP_EMAIL,
+      },
+    });
+
+    var mailOptions = {
+      from: process.env.EMAIL,
+      to: "chiraniasanskar@gmail.com",
+      subject: "Password Reset OTP",
+      text: `Your OTP for password reset is: ${otp}`,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error);
+        return res.status(500).send({ status: "Failed to send email" });
+      } else {
+        console.log("Email sent: " + info.response);
+        return res.send({ msg: "OTP sent to email" });
+      }
+    });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ status: "An error occurred" });
+  }
+});
+
+// app.get("/resetPassword/:id/:token", async (req, res) => {
+//   const { id, token } = req.params;
+//   console.log(req.params);
+//   const oldUser = await User.findOne({ _id: id });
+//   if (!oldUser) {
+//     return res.json({
+//       status: "User doesn't exist!!",
+//     });
+//   }
+//   try {
+//     const verify = await jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+//     res.json({ msg: "Verified" });
+//   } catch (e) {
+//     res.json({ msg: "Not verified" });
+//   }
+// });
+
+app.post("/verifyOtp", async (req, res) => {
+  const { email, otp } = req.body;
+  const user = await User.findOne({ email: email });
+
+  if (!user) {
+    return res.status(400).send({ status: "User not found!" });
+  }
+
+  if (user.resetPasswordOTP === otp && user.resetPasswordExpires > Date.now()) {
+    return res.send({ status: "OTP verified. Proceed to reset password." });
+  } else {
+    return res.status(400).send({ status: "Invalid or expired OTP!" });
+  }
+});
+
+app.post("/resetPassword", async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  const user = await User.findOne({ email: email });
+
+  if (!user) {
+    return res.status(400).send({ status: "User not found!" });
+  }
+
+  if (user.resetPasswordOTP === otp && user.resetPasswordExpires > Date.now()) {
+    const encryptedPassword = await bcrypt.hash(newPassword, 10);
+    await User.updateOne(
+      {
+        _id: user._id,
+      },
+      {
+        $set: {
+          password: encryptedPassword,
+        },
+      }
+    );
+
+    // Clear resetPasswordOTP and resetPasswordExpires
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    // Send success response
+    return res.status(200).json({
+      status: "Password has been reset successfully.",
+    });
+  } else {
+    return res.status(400).send({ status: "Invalid or expired OTP!" });
+  }
+});
 
 app.listen(port);
