@@ -248,6 +248,7 @@ app.post("/forgetPassword", async (req, res) => {
   const oldUser = await User.findOne({ email: req.body.email });
   if (!oldUser) {
     return res.send({ status: "User not found!!" });
+    alert("user not found");
   }
 
   try {
@@ -266,7 +267,7 @@ app.post("/forgetPassword", async (req, res) => {
 
     var mailOptions = {
       from: process.env.EMAIL,
-      to: "chiraniasanskar@gmail.com",
+      to: oldUser.email,
       subject: "Password Reset OTP",
       text: `Your OTP for password reset is: ${otp}`,
     };
